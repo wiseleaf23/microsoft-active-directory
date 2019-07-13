@@ -1,9 +1,19 @@
-﻿#Parameters
+﻿<#
+This script enables you to export all users in Microsoft 365 that have admin roles assigned to them.
+By defining the ExportToCsvPath parameter, you can export the output to CSV.
+#>
+
+#Parameters
     Param(
         [Parameter(Mandatory=$false)]$ExportToCsvPath
     )
 
-#Connect to MSOnline
+#Check for MSOnline module, install and/or connect to MSOnline
+    if(!(Get-Module -ListAvailable -Name MSOnline)) {
+        Write-Host "MSOnline module not found, will try to install this in user context"
+        Install-Module -Name MSOnline -Scope CurrentUser -Force
+    }
+    Write-Host "Now connecting to MSOnline"
     Connect-MsolService
 
 #Get all roles
@@ -23,6 +33,6 @@
         $RolesAndMembers
     }
 
-#Pause, clear and exit
+#Pause and exit
     Read-Host -Prompt "Finished, press Enter to exit"
     Exit
