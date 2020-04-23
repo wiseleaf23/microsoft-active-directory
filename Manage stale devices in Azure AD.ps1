@@ -1,16 +1,26 @@
 #requires -version 2
 <#
 .SYNOPSIS
-  Clean-up AAD devices for cloud-only environments. Hybrid not (yet) supported
+    Manage stale devices in Azure AD for cloud-only environments, Hybrid not (yet) supported.
 
 .DESCRIPTION
-  Clean-up AAD devices for cloud-only environments. Hybrid not (yet) supported
+    Manage stale devices in Azure AD for cloud-only environments, Hybrid not (yet) supported. The script excludes system managed devices (eg Autopilot devices), as advised by Microsoft.
+    Script is based on examples and recommendations from Microsoft, for more info: https://docs.microsoft.com/en-us/azure/active-directory/devices/manage-stale-devices
 
-.PARAMETER ExportDevices
-    Specify to export devices to CSV
+.PARAMETER TimeFrameInDays
+    Specify TimeFrameInDays to determine which devices are stale, recommended value: 90
+
+.PARAMETER ExportFolder
+    Specify folder to export CSV overview of stale devices to.
 
 .PARAMETER CsvToImport
-    Specify exported CSV files to process (disable, remove ir enable)
+    Specify exported CSV files to process (disable, remove or enable)
+
+.PARAMETER Action
+    Action to take in the devices specified in the CSV file, supported actions are:
+    - Disable
+    - Enable
+    - Remove
 
 .INPUTS
     You can input a CSV when disabling, removing or enabling
@@ -19,35 +29,33 @@
     When exporting, a CSV file will be created in the folder you specified
 
 .NOTES
-  Version:          1.0
+  Version:          1.1
   Template version: 1.3
   Author:           Axel Timmermans
-  Creation Date:    2019-12-30
-  Purpose/Change:   Initial script development 
+  Creation Date:    2020-04-23
+  Purpose/Change:   Removed a parameter, prepared for enterprise use - Fixed some typo's - Initial script development 
 
   Use Get-MsolDevice to prevent deletion of System-Managed devices (https://docs.microsoft.com/en-us/azure/active-directory/devices/manage-stale-devices#system-managed-devices)
   More info https://docs.microsoft.com/en-us/azure/active-directory/devices/manage-stale-devices
   
 .EXAMPLE
   To export devices marked as stale by your policy, run the script like:
-  '.\Clean Azure AD devices.ps1' -ExportDevices -TimeframeInDays 90 -ExportFolder "D:\"
+  '.\Manage stale devices in Azure AD.ps1' -TimeframeInDays 90 -ExportFolder "D:\"
 
-  To import devices from the CSV created and disable:
-  '.\Clean Azure AD devices.ps1' -CsvToImport "Devices older than 2019-10-01 for contoso.csv" -Action Disable
+  To disable devices specified in CSV:
+  '.\Manage stale devices in Azure AD.ps1' -CsvToImport "Devices older than 2019-10-01 for contoso.csv" -Action Disable
+
+  To remove devices specified in CSV:
+  '.\Manage stale devices in Azure AD.ps1' -CsvToImport "Devices older than 2019-10-01 for contoso.csv" -Action Remove
 
   If you made a mistake with disabling, you can also use the script to enable the devices again:
-  '.\Clean Azure AD devices.ps1' -CsvToImport "Devices older than 2019-10-01 for contoso.csv" -Action Enable
+  '.\Manage stale devices in Azure AD.ps1' -CsvToImport "Devices older than 2019-10-01 for contoso.csv" -Action Enable
 
 #>
 
 #region Parameters-----------------------------------------------------------------------------------------
 
 Param(
-    [Parameter(Mandatory=$true, ParameterSetName="Export",
-    HelpMessage="Specify to export stale devices to CSV")]
-    [switch]
-    $ExportDevices,
-
     [Parameter(Mandatory=$true, ParameterSetName="Export",
     HelpMessage="Timeframe in days after which you want to process stale devices")]
     $TimeframeInDays,
@@ -70,8 +78,6 @@ Param(
 
 #endregion-------------------------------------------------------------------------------------------------
 
-
-
 #Connect to MSOL (check module first)
 Write-Host ""
 Write-Host "Connecting to MSOL..." -ForegroundColor Green
@@ -84,7 +90,7 @@ try{Connect-MsolService}
 catch{Write-Error "Connecting to MSOL failed, cannot continue"}
 
 #Export devices to CSV
-if ($ExportDevices) {
+if ($ExportFolder) {
     #Define timeframe for stale devices
     $Today = Get-Date -Format "yyyy-MM-dd"
     $LogonTimeBefore = (Get-Date -Date $Today).AddDays(-$TimeframeInDays)
